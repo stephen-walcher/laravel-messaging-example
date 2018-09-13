@@ -1,0 +1,54 @@
+version: "2"
+services:
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+
+  fpm:
+    build:
+      context: ./fpm
+    volumes:
+      - ./app:/var/app
+    expose:
+      - "9000"
+    environment:
+      - "DB_HOST=db"
+      - "DB_DATABASE=laravel"
+
+  composer:
+    image: composer/composer:php7
+    command: install
+    volumes:
+      - ./app:/app
+
+  db:
+    image: mariadb
+    ports:
+      - "33060:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=laravel
+    volumes:
+      - ./database/mysqldump:/docker-entrypoint-initdb.d
+      - ./database/data:/var/lib/mysql
+
+  echo-server:
+    build: ./echo
+    ports:
+      - "6001:6001"
+    depends_on:
+      - redis
+    environment:
+      - "APP_DEBUG=true"
+      - "LES_DB=redis"
+      - "REDIS_HOST=redis"
+      - "REDIS_PORT=6379"
+
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./app:/var/app
